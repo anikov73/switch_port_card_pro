@@ -47,17 +47,17 @@ class SwitchPortData:
 
 class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
     def __init__(
-        self,
-        hass: HomeAssistant,
-        host: str,
-        community: str,
-        snmp_port,
-        ports: list[int],
-        base_oids: dict[str, str],
-        system_oids: dict[str, str],
-        snmp_version: str,
-        include_vlans: bool,
-        update_seconds: int,
+            self,
+            hass: HomeAssistant,
+            host: str,
+            community: str,
+            snmp_port,
+            ports: list[int],
+            base_oids: dict[str, str],
+            system_oids: dict[str, str],
+            snmp_version: str,
+            include_vlans: bool,
+            update_seconds: int,
     ) -> None:
         super().__init__(
             hass,
@@ -77,6 +77,19 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
         self.update_seconds = update_seconds
         self._last_total_bytes = 0
 
+    def _poe_power_scale_mw(self) -> float:
+        """Multiplier that converts raw per-port PoE power values to milliwatts.
+
+        Most vendors (Zyxel, Cisco pethPsePortPower...) report mW, which is what
+        the rest of this integration expects. TP-Link's private PoE MIB
+        (TPLINK-POWER-OVER-ETHERNET-MIB, enterprise 11863) reports 0.1 W units,
+        so multiply by 100 to get mW.
+        """
+        oid = self.base_oids.get("poe_power") or ""
+        if oid.startswith("1.3.6.1.4.1.11863."):
+            return 100.0
+        return 1.0
+
     async def _async_update_data(self) -> SwitchPortData:
         try:
 
@@ -85,8 +98,8 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
                 self.port_mapping = {
                     p: {"if_index": p, "name": f"Port {p}", "is_sfp": False, "is_copper": True}
                     for p in self.ports
-                }   
-            # === PORT WALKS ===
+                }
+                # === PORT WALKS ===
             oids_to_walk = ["rx", "tx", "status", "speed", "name", "poe_power", "poe_status","port_custom"]
             if self.include_vlans and self.base_oids.get("vlan"):
                 oids_to_walk.append("vlan")
@@ -103,7 +116,7 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
                     _LOGGER.error("SNMP walk failed for %s: %s", key, result)
                     walk_map[key] = {}
                 elif not result:
-               #     _LOGGER.warning("SNMP walk empty for %s → using defaults", key) # surpress unneeded log
+                    #     _LOGGER.warning("SNMP walk empty for %s → using defaults", key) # surpress unneeded log
                     walk_map[key] = {}
                 else:
                     walk_map[key] = result
@@ -128,6 +141,24 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
             poe_status = parse(walk_map.get("poe_status", {}))
             port_custom = parse(walk_map.get("port_custom", {}))
 
+            # --- FIX 1 (units): normalize PoE power readings to milliwatts ---
+            # Everything downstream (TotalPoESensor, per-port poe_power_watts)
+            # assumes poe_power is in mW. TP-Link's private PoE MIB
+            # (TPLINK-POWER-OVER-ETHERNET-MIB, 1.3.6.1.4.1.11863.6.56...)
+            # reports tpPoePower in 0.1 W units, i.e. 1 raw unit = 100 mW.
+            poe_scale = self._poe_power_scale_mw()
+            if poe_scale != 1:
+                poe_power = {k: int(v * poe_scale) for k, v in poe_power.items()}
+
+            # --- FIX 2 (indexing): vendor PoE tables are often indexed by
+            # physical port number (1..N), while ifIndex can be arbitrary
+            # (TP-Link JetStream starts at 49153). Look up by ifIndex first,
+            # then fall back to the logical port number.
+            def lookup(table: dict[int, Any], if_index: int, port: int, default: Any = 0) -> Any:
+                if if_index in table:
+                    return table[if_index]
+                return table.get(port, default)
+
             ports_data: dict[str, dict[str, Any]] = {}
             total_rx = total_tx = total_poe_mw = 0
 
@@ -148,7 +179,8 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
                 }
 
                 # Use the real if_index for all lookups
-                if any(if_index in t for t in (status, speed, rx, tx, poe_power)):
+                # (also accept ports that only appear in a port-indexed PoE table)
+                if any(if_index in t for t in (status, speed, rx, tx, poe_power)) or port in poe_power:
                     HighLowSpeed = speed.get(if_index, 0)
                     if HighLowSpeed < 100000: # check if we use the 32 or 64 bit variant
                         HighLowSpeed = HighLowSpeed * 1000000 # convert to bps
@@ -158,15 +190,15 @@ class SwitchPortCoordinator(DataUpdateCoordinator[SwitchPortData]):
                         "rx": rx.get(if_index, 0),
                         "tx": tx.get(if_index, 0),
                         "name": name.get(if_index, f"Port {port}"),
-                        "vlan": vlan.get(if_index),
-                        "poe_power": poe_power.get(if_index, 0),
-                        "poe_status": poe_status.get(if_index, 0),
-                        "port_custom": port_custom.get(if_index, 0),
+                        "vlan": lookup(vlan, if_index, port, None),
+                        "poe_power": lookup(poe_power, if_index, port),
+                        "poe_status": lookup(poe_status, if_index, port),
+                        "port_custom": lookup(port_custom, if_index, port),
                     })
 
                 total_rx += rx.get(if_index, 0)
                 total_tx += tx.get(if_index, 0)
-                total_poe_mw += poe_power.get(if_index, 0)
+                total_poe_mw += lookup(poe_power, if_index, port)
 
             # compute current totals (these are lifetime counters) in bytes
             current_total_bytes = total_rx + total_tx
@@ -248,10 +280,10 @@ class SwitchPortBaseEntity(SensorEntity):
     @property
     def available(self) -> bool:
         """Return True only if we have data."""
-        try: 
+        try:
             return (
-                self.coordinator.last_update_success
-                and self.coordinator.data is not None
+                    self.coordinator.last_update_success
+                    and self.coordinator.data is not None
             )
         except Exception:
             _LOGGER.error("Entity not available")
@@ -274,29 +306,29 @@ class SwitchPortBaseEntity(SensorEntity):
             try:
                 if not self.coordinator.data:
                     return
-    
+
                 system = self.coordinator.data.system
-    
+
                 raw_hostname = system.get("hostname") or ""
                 device_name = raw_hostname.strip() or f"Switch {self.coordinator.host}"
                 model = (system.get("model") or "")
                 firmware = system.get("firmware")
-    
+
                 # Update device registry entry
                 dev_reg = device_registry.async_get(self.hass)
                 device_entry = dev_reg.async_get_device(
-                        identifiers={(DOMAIN, f"{self.entry_id}_{self.coordinator.host}")}
+                    identifiers={(DOMAIN, f"{self.entry_id}_{self.coordinator.host}")}
                 )
                 if device_entry:
                     dev_reg.async_update_device(
-                    device_entry.id,
-                    name=device_name,
-                    model=model,
-                    sw_version=firmware,
+                        device_entry.id,
+                        name=device_name,
+                        model=model,
+                        sw_version=firmware,
                     )
             except Exception as err:
                 _LOGGER.error("Entity update failed for %s with error %s", self.host, err)
-    
+
         # Run on each coordinator update
         self._unsub_devinfo = self.coordinator.async_add_listener(_update_device_info)
 
@@ -327,7 +359,7 @@ class TotalPoESensor(SwitchPortBaseEntity):
             return float(val) if val is not None else None
         except (ValueError, TypeError):
             return 0
-        
+
 class BandwidthSensor(SwitchPortBaseEntity):
     """Total bandwidth sensor."""
 
@@ -369,12 +401,12 @@ class FirmwareSensor(SwitchPortBaseEntity):
             return self.coordinator.data.system.get("firmware")
         except (ValueError, TypeError):
             return ""
-        
+
 class PortStatusSensor(SwitchPortBaseEntity):
     """Port status (on/off) sensor, acting as the primary port entity."""
     _attr_has_entity_name = True
     _attr_should_poll = False
-    
+
     def __init__(self, coordinator: SwitchPortCoordinator, entry_id: str, port: int) -> None:
         super().__init__(coordinator, entry_id)
         self.port = str(port)
@@ -406,69 +438,69 @@ class PortStatusSensor(SwitchPortBaseEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         if not self.coordinator.data:
             return {}
-        try:    
+        try:
             p = self.coordinator.data.ports.get(self.port, {})
-    
+
             # === LIFETIME VALUES (always available) ===
             raw_rx_bytes = p.get("rx", 0)
             raw_tx_bytes = p.get("tx", 0)
-    
+
             # === LIVE RATE CALCULATION (only if we have previous data) ===
             now = datetime.now().timestamp()
             rx_bps_live = 0
             tx_bps_live = 0
-    
+
             if (self._last_rx_bytes is not None
-                and self._last_tx_bytes is not None
-                and self._last_update is not None
-                and now > self._last_update):
-    
+                    and self._last_tx_bytes is not None
+                    and self._last_update is not None
+                    and now > self._last_update):
+
                 actual_delta = now - self._last_update
                 delta_time = actual_delta if actual_delta < (self.coordinator.update_seconds * 1.5) else self.coordinator.update_seconds
-    
+
                 if delta_time > 0:
                     # --- RAW DELTAS ---
                     delta_rx = raw_rx_bytes - self._last_rx_bytes
                     delta_tx = raw_tx_bytes - self._last_tx_bytes
-            
+
                     # --- HANDLE 32-bit WRAPAROUND ---
                     # Most switches use 32-bit counters for ifHC* until > 4GB
                     MAX32 = 4294967296  # 2^32
-            
+
                     if delta_rx < 0:
                         # If previous value was "close" to wrap limit → wrap happened
                         if self._last_rx_bytes > 3_000_000_000:
                             delta_rx = (MAX32 - self._last_rx_bytes) + raw_rx_bytes
-            
+
                     if delta_tx < 0:
                         if self._last_tx_bytes > 3_000_000_000:
                             delta_tx = (MAX32 - self._last_tx_bytes) + raw_tx_bytes
-    
-            
+
+
                     # --- COMPUTE LIVE BPS ---
                     rx_bps_live = int(delta_rx * 8 / delta_time)
                     tx_bps_live = int(delta_tx * 8 / delta_time)
-            
+
                     # --- FINAL SAFETY CLAMP ---
                     MAX_SAFE_BPS = 20_000_000_000
                     if rx_bps_live < 0 or rx_bps_live > MAX_SAFE_BPS:
                         _LOGGER.warning("RX counter reset or spurious data detected. Dropping rate data.")
                         rx_bps_live = 0
-                        
+
                     if tx_bps_live < 0 or tx_bps_live > MAX_SAFE_BPS:
                         _LOGGER.warning("TX counter reset or spurious data detected. Dropping rate data.")
                         tx_bps_live = 0
-    
+
             # Store for next poll
             self._last_rx_bytes = raw_rx_bytes
             self._last_tx_bytes = raw_tx_bytes
             self._last_update = now
             port_info = self.coordinator.port_mapping.get(int(self.port), {})
             has_poe = (
-                p.get("poe_power", 0) > 0 or
-                p.get("poe_status", 0) > 0 or
-                self.coordinator.base_oids.get("poe_power") or
-                self.coordinator.base_oids.get("poe_status")
+                    p.get("poe_power", 0) > 0 or
+                    p.get("poe_status", 0) > 0 or
+                    self.coordinator.base_oids.get("poe_power") or
+                    self.coordinator.base_oids.get("poe_status")
             )
             attrs = {
                 "port_name": p.get("name"),
@@ -495,7 +527,7 @@ class PortStatusSensor(SwitchPortBaseEntity):
                 })
             return attrs
         except Exception as e:
-          _LOGGER.debug("Error calculating live traffic for port %s: %s", self.port, e)
+            _LOGGER.debug("Error calculating live traffic for port %s: %s", self.port, e)
         return {}
 
 # --- System Sensors ---
@@ -522,7 +554,7 @@ class SystemCpuSensor(SwitchPortBaseEntity):
             return float(self.coordinator.data.system.get("cpu") or 0)
         except (ValueError, TypeError):
             return 0
-            
+
 class CustomValueSensor(SwitchPortBaseEntity):
     _attr_name = "Custom Value"
     _attr_icon = "mdi:text-box-search"
@@ -615,9 +647,9 @@ class SystemHostnameSensor(SwitchPortBaseEntity):
 # Setup
 # =============================================================================
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the platform from config_entry. vlans override always to true"""
     coordinator = hass.data[DOMAIN][entry.entry_id]
