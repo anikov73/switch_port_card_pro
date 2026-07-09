@@ -1,6 +1,6 @@
 {
   "domain": "switch_port_card_pro",
-  "name": "Switch Port Card Pro",
+  "name": "Switch Port Card Pro Anikov",
   "codeowners": ["@partach"],
   "config_flow": true,
   "dependencies": [ "lovelace","frontend"],
