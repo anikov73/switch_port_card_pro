@@ -93,6 +93,7 @@ The card comes with a configuration dialog that guides the instalation in HA.
 |  Ports per Row   | You can tweak your card toward the number of ports per row that will be shown | 
 |  Port 2 row display   | Choose which value to show in the second row to of the port display (can be none) | 
 |  Port 3 row display   | Choose which value to show in the third row to of the port display (can be none) | 
+|  Port name overrides   | YAML-only map for manually overriding displayed port names by port number | 
 |  Port color scheme   |  Choose the dynamic port color scheme | 
 |  Card Background Color   | Set any rgba value for the background of the card | 
 |  Show Bandwidth gauge   | Toggle to show or not show the bandwidth gauge | 
@@ -115,6 +116,19 @@ The card has a configuration screen which can be used in stead...
   show_system_info: true
   show_port_type_labels: false
   custom_text: Temperature MAC
+```
+
+### Manual port name overrides
+Some switches expose SNMP port status but do not publish custom port names. You can override the names shown by the card in YAML:
+```yaml
+  type: custom:switch-port-card-pro
+  ...
+  row2: name
+  port_name_overrides:
+    1: Router
+    2: NAS
+    3: Living room AP
+    8: TV
 ```
 
 ## If auto port detection does not work

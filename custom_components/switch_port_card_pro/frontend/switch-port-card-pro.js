@@ -19,6 +19,7 @@ const DEFAULT_CONFIG = {
   ports_per_row: 8,
   hide_unused_port: false,
   hide_unused_port_hours: 24,
+  port_name_overrides: {},
   layout_mode: "linear",  // Options: "linear" (default), "even_top", "odd_top"
   truncate_text: true,
   theme_safe_colors: true,  // not used for now
@@ -496,6 +497,16 @@ class SwitchPortCardPro extends HTMLElement {
     return (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
   }
 
+  _resolvePortName(portNumber, entity) {
+    const override = this._config.port_name_overrides?.[portNumber];
+    const overrideName = override == null ? "" : String(override).trim();
+    if (overrideName) return overrideName;
+
+    const attribute = entity.attributes?.port_name;
+    const attributeName = attribute == null ? "" : String(attribute).trim();
+    return attributeName || `Port ${portNumber}`;
+  }
+
   _renderSystemInfo() {
   const show = this._config.system_boxes || {};
   const data = this._systemData || {};
@@ -809,7 +820,7 @@ class SwitchPortCardPro extends HTMLElement {
     const renderPortRow = (portList, container) => {
       portList.forEach(({ i, ent, isOn, traffic }) => {
         const speedMbps = Math.round((ent.attributes?.speed_bps || 0) / 1e6) || 0;
-        const name = ent.attributes?.port_name?.trim() || `Port ${i}`;
+        const name = this._resolvePortName(i, ent);
         const vlan = ent.attributes?.vlan_id;
         const poeEnabled = ent.attributes?.poe_enabled === true;
         const ifDescr = ent.attributes?.interface || "";
