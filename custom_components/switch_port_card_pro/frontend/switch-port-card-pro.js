@@ -19,7 +19,6 @@ const DEFAULT_CONFIG = {
   ports_per_row: 8,
   hide_unused_port: false,
   hide_unused_port_hours: 24,
-  port_name_overrides: {},
   layout_mode: "linear",  // Options: "linear" (default), "even_top", "odd_top"
   truncate_text: true,
   theme_safe_colors: true,  // not used for now
@@ -206,14 +205,14 @@ class SwitchPortCardPro extends HTMLElement {
           grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 50px), 1fr));
           --port-min-width: 50px;
         }
-
+ 
         /* Size-based grid adjustments */
         .ports-grid:has(.port.size-xsmall) { --port-min-width: 38px; }
         .ports-grid:has(.port.size-small) { --port-min-width: 38px; }
         .ports-grid:has(.port.size-medium) { --port-min-width: 50px; }
         .ports-grid:has(.port.size-large) { --port-min-width: 64px; }
         .ports-grid:has(.port.size-xlarge) { --port-min-width: 78px; }
-
+ 
         /* Compact mode overrides */
         .compact .ports-grid { --port-min-width: 40px; }
         .compact .ports-grid:has(.port.size-xlarge) { --port-min-width: 48px; }
@@ -225,7 +224,7 @@ class SwitchPortCardPro extends HTMLElement {
           width: 100%;
           margin-bottom: 6px;  /* Space between top and bottom row */
         }
-
+ 
         .compact .ports-grid.top-row,
         .compact .ports-grid.bottom-row {
           margin-bottom: 4px;
@@ -259,7 +258,7 @@ class SwitchPortCardPro extends HTMLElement {
           font-size:1.2em;
           font-weight:600
         }
-
+ 
         .scheme-cycle-button {
           --mdc-icon-button-size: 40px;
           --mdc-icon-size: 24px;
@@ -272,7 +271,7 @@ class SwitchPortCardPro extends HTMLElement {
           cursor: pointer;
           font-size: 0.7em;  /* Make text smaller so button fits better */
         }
-
+ 
         .scheme-cycle-button:hover {
           background: rgba(var(--rgb-primary-color), 0.3);
         }
@@ -314,7 +313,7 @@ class SwitchPortCardPro extends HTMLElement {
           cursor: pointer; /* ← Makes mouse show it's clickable */
           transition: all 0.2s ease; /* ← Smooth hover */
         }
-
+ 
         .system-box:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 10px rgba(0,0,0,0.2);
@@ -336,7 +335,7 @@ class SwitchPortCardPro extends HTMLElement {
         .port.on-10m    { background: var(--switch-port-10m-color, #f44336); color: white;}
         .port.on-0m    { background: var(--switch-port-0m-color, #454444ff); color: white;}
         .port.sfp{border:2px solid #2196f3!important;border-radius: 1px;;box-shadow:0 0 12px rgba(33,150,243,.45)!important}
-
+ 
         .port.size-xsmall {
           font-size: 0.60em !important;
           padding-top: 6px !important;
@@ -362,7 +361,7 @@ class SwitchPortCardPro extends HTMLElement {
           flex-direction: column;
           gap: 8px;  /* Space between top and bottom row */
         }
-
+ 
         .compact .ports-staggered {
           gap: 4px;
         }
@@ -371,13 +370,13 @@ class SwitchPortCardPro extends HTMLElement {
         }
         .compact .port.font-xlarge .port-num,
         .compact .port.font-xlarge .port-row { font-size: 0.68em !important; }
-
+ 
         .poe-indicator{position:absolute;top:4px;right:6px;font-size:0.7em;font-weight:bold;color:#00ff00;text-shadow:0 0 4px #000}
-
+ 
         .compact .port{aspect-ratio:3.6/1!important;font-size:0.58em!important;padding-top:4px}
         .compact .system-grid{gap:8px;margin:8px 0 4px 0}
         .compact .info-box{padding:5px 6px}
-
+ 
         @media (max-width: 900px) {
           .ports-grid {
             grid-template-columns: repeat(auto-fit, minmax(var(--port-min-width, 40px), 1fr));
@@ -386,7 +385,7 @@ class SwitchPortCardPro extends HTMLElement {
         .top-row, .bottom-row {
           margin-bottom: 4px;  /* Space between top/bottom */
         }
-
+ 
         .compact .top-row, .compact .bottom-row {
           margin-bottom: 2px;
         }
@@ -401,7 +400,7 @@ class SwitchPortCardPro extends HTMLElement {
         .heatmap-3  { background: var(--switch-port-heat-3, #4caf50); color: black;}
         .heatmap-2  { background: var(--switch-port-heat-2, #2e7d32); color: white;}
         .heatmap-1  { background: var(--switch-port-heat-1, #1b5e20); color: white;}
-
+ 
         /* ACTUAL SPEED COLORS */
         .actual-100m { background: var(--switch-port-actual-high, #9c27b0); }
         .actual-10m  { background: var(--switch-port-actual-med, #4176ff); }
@@ -409,14 +408,14 @@ class SwitchPortCardPro extends HTMLElement {
         .actual-100k { background: var(--switch-port-actual-low, #ffeb3b); color: black;}
         .actual-1k   { background: var(--switch-port-actual-low, #ffa800); color: black;}
         .actual-off  { background: var(--switch-port-actual-off, #191919); color: white;}
-
+ 
         /* VLAN MODE */
         .vlan-colored { transition: none; }
-
+ 
         ha-card {
-          background: ${this._config.card_background_color 
-            ? this._config.card_background_color 
-            : 'var(--ha-card-background, var(--card-background-color))'};
+          background: ${this._config.card_background_color
+        ? this._config.card_background_color
+        : 'var(--ha-card-background, var(--card-background-color))'};
           padding: 1px;
           border-radius: var(--ha-card-border-radius, 8px);
           box-shadow: none !important;
@@ -433,7 +432,7 @@ class SwitchPortCardPro extends HTMLElement {
         <div class="ports-section ${c}">
           <div class="section-label ${this._config.show_port_type_labels ? '' : 'section-hidden'}">COPPER</div>
           <div class="ports-grid" id="copper"></div>
-
+ 
           <div class="section-label ${this._config.show_port_type_labels ? '' : 'section-hidden'}">FIBER</div>
           <div class="ports-grid" id="sfp"></div>
         </div>
@@ -497,21 +496,11 @@ class SwitchPortCardPro extends HTMLElement {
     return (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
   }
 
-  _resolvePortName(portNumber, entity) {
-    const override = this._config.port_name_overrides?.[portNumber];
-    const overrideName = override == null ? "" : String(override).trim();
-    if (overrideName) return overrideName;
-
-    const attribute = entity.attributes?.port_name;
-    const attributeName = attribute == null ? "" : String(attribute).trim();
-    return attributeName || `Port ${portNumber}`;
-  }
-
   _renderSystemInfo() {
-  const show = this._config.system_boxes || {};
-  const data = this._systemData || {};
+    const show = this._config.system_boxes || {};
+    const data = this._systemData || {};
 
-  return html`
+    return html`
     <div class="system-tray">
       ${show.cpu ? html`
         <div class="system-box" @click=${() => this._showEntityDetails(this._entities.cpu?.entity_id)}>
@@ -566,7 +555,7 @@ class SwitchPortCardPro extends HTMLElement {
 
     const schemes = ["speed", "heatmap", "vlan", "actual_speed"];
     const current = this._config.color_scheme || "speed";
-    
+
     const currentIndex = schemes.indexOf(current);
     const nextIndex = (currentIndex === -1 ? 0 : currentIndex + 1) % schemes.length;
     const nextScheme = schemes[nextIndex];
@@ -598,8 +587,8 @@ class SwitchPortCardPro extends HTMLElement {
     const schemeButton = this.shadowRoot.getElementById("scheme-button");
     if (schemeButton) {
       const schemeText = (this._config.color_scheme || "speed")
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, l => l.toUpperCase());
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, l => l.toUpperCase());
       schemeButton.textContent = schemeText;
     }
 
@@ -664,7 +653,7 @@ class SwitchPortCardPro extends HTMLElement {
     else {
       this.shadowRoot.getElementById("system").innerHTML = ``;
     }
-    
+
     // gauge
     const gauge = this.shadowRoot.getElementById("gauge");
     const fill = this.shadowRoot.getElementById("fill");
@@ -746,6 +735,10 @@ class SwitchPortCardPro extends HTMLElement {
         case "vlan_id":
         case "vlan":
           return ctx.vlan ? `VLAN ${ctx.vlan}` : '\u00A0';
+        case "poe":
+        case "poe_power":
+        case "poe_watts":
+          return ctx.poePowerW > 0 ? `${ctx.poePowerW.toFixed(1)} W` : '\u00A0';
         default:
           return '\u00A0';
       }
@@ -820,9 +813,10 @@ class SwitchPortCardPro extends HTMLElement {
     const renderPortRow = (portList, container) => {
       portList.forEach(({ i, ent, isOn, traffic }) => {
         const speedMbps = Math.round((ent.attributes?.speed_bps || 0) / 1e6) || 0;
-        const name = this._resolvePortName(i, ent);
+        const name = ent.attributes?.port_name?.trim() || `Port ${i}`;
         const vlan = ent.attributes?.vlan_id;
         const poeEnabled = ent.attributes?.poe_enabled === true;
+        const poePowerW = parseFloat(ent.attributes?.poe_power_watts ?? 0) || 0;
         const ifDescr = ent.attributes?.interface || "";
         const port_custom = ent.attributes?.custom || "";
 
@@ -909,8 +903,8 @@ class SwitchPortCardPro extends HTMLElement {
 
         const balancedGlyph = "\u2195";
         const portDirectionDisplay = isOn
-          ? (direction === "\u2193" || direction === "\u2191" ? direction : balancedGlyph)
-          : "-";
+            ? (direction === "\u2193" || direction === "\u2191" ? direction : balancedGlyph)
+            : "-";
 
         const ctx = {
           rxBpsLifetime,
@@ -921,7 +915,8 @@ class SwitchPortCardPro extends HTMLElement {
           port_custom,
           name,
           ifDescr,
-          vlan
+          vlan,
+          poePowerW
         };
 
         const row2Content = renderRowContent(this._config.row2, ctx, isOn);
@@ -929,15 +924,16 @@ class SwitchPortCardPro extends HTMLElement {
         const lastSeen = `Last seen: ${this._formatLastSeen(idleSeconds)}`;
 
         div.title =
-          `${name}` +
-          (ifDescr ? `\nInterface: ${ifDescr}` : "") +
-          `\nState: ${isOn ? "UP" : "DOWN"}` +
-          `\nSpeed: ${speedText}` +
-          (vlan ? `\nVLAN: ${vlan}` : "") +
-          `\nRX: ${(rxBps / 1e6).toFixed(2)} Mb/s` +
-          `\nTX: ${(txBps / 1e6).toFixed(2)} Mb/s` +
-          (port_custom ? `\n${this._config.custom_port_text}: ${port_custom}` : "") +
-          `\n${lastSeen}`;
+            `${name}` +
+            (ifDescr ? `\nInterface: ${ifDescr}` : "") +
+            `\nState: ${isOn ? "UP" : "DOWN"}` +
+            `\nSpeed: ${speedText}` +
+            (vlan ? `\nVLAN: ${vlan}` : "") +
+            (poePowerW > 0 ? `\nPoE: ${poePowerW.toFixed(1)} W` : "") +
+            `\nRX: ${(rxBps / 1e6).toFixed(2)} Mb/s` +
+            `\nTX: ${(txBps / 1e6).toFixed(2)} Mb/s` +
+            (port_custom ? `\n${this._config.custom_port_text}: ${port_custom}` : "") +
+            `\n${lastSeen}`;
 
         div.onclick = (ev) => {
           ev.stopPropagation();
@@ -953,11 +949,11 @@ class SwitchPortCardPro extends HTMLElement {
             <span class="port-num">${i}</span>
             <span class="port-direction">${portDirectionDisplay}</span>
           </div>
-
+ 
           ${row2Content !== null ? `<div class="port-row">${row2Content}</div>` : ``}
-
+ 
           ${hasRow3 && row3Content !== null ? `<div class="port-row">${row3Content}</div>` : ``}
-
+ 
           ${poeEnabled ? '<div class="poe-indicator">P</div>' : ''}
         `;
 
@@ -1013,7 +1009,7 @@ class SwitchPortCardProEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!hass || this._last === JSON.stringify(this._config)) return;
-  // Prevent infinite re-rendering loop
+    // Prevent infinite re-rendering loop
     const configStr = JSON.stringify(this._config);
     if (this._last === configStr) return;
     this._last = configStr;
@@ -1045,7 +1041,8 @@ class SwitchPortCardProEditor extends HTMLElement {
       { val: "port_custom", label: "Custom Port Value" },
       { val: "name",       label: "Port Name" },
       { val: "interface",  label: "Interface" },
-      { val: "vlan_id",    label: "VLAN ID" }
+      { val: "vlan_id",    label: "VLAN ID" },
+      { val: "poe",        label: "PoE Power (W)" }
     ];
 
     const makeOptions = (selected) => rowOptions.map(o => `<option value="${o.val}" ${o.val===selected?'selected':''}>${o.label}</option>`).join('');
@@ -1062,7 +1059,7 @@ class SwitchPortCardProEditor extends HTMLElement {
         select,input{flex:1;padding:8px;border-radius:6px;border:1px solid var(--divider-color);background:var(--input-background-color,#444);color:var(--input-text-color,#fff)}
         .checkbox-row{display:flex;align-items:center;gap:4px;margin:2px 0}
         .checkbox-label{font-weight:500;color:var(--primary-text-color);cursor:pointer}
-
+ 
         /* NEW: Grid layouts for compact fields */
         .row-group {
           display: grid;
@@ -1162,13 +1159,13 @@ class SwitchPortCardProEditor extends HTMLElement {
           <ha-checkbox data-key="show_total_bandwidth" ${this._config.show_total_bandwidth!==false ? 'checked':''}></ha-checkbox>
           <span class="checkbox-label">Show Bandwidth Gauge</span>
         </div>
-
+ 
         <!-- Show System Info Switch -->
         <div class="checkbox-row">
           <ha-checkbox data-key="show_system_info" ${this._config.show_system_info !== false ? 'checked' : ''}></ha-checkbox>
           <span class="checkbox-label">Show System Info (CPU, Mem, FW, etc.)</span>
         </div>
-
+ 
         <div class="row-group">
           <div class="checkbox-row">
             <ha-checkbox data-key="system_boxes.cpu" ${this._config.system_boxes.cpu !== false ? 'checked' : ''}></ha-checkbox>
@@ -1226,7 +1223,7 @@ class SwitchPortCardProEditor extends HTMLElement {
             <input type="text" placeholder="e.g. sensor.my_custom" data-key="system_box_overrides.custom" value="${this._config.system_box_overrides?.custom || ''}">
           </div>
         </div>
-
+ 
         <div class="checkbox-row">
           <ha-checkbox data-key="show_port_type_labels" ${this._config.show_port_type_labels !== false ? 'checked' : ''}></ha-checkbox>
           <span class="checkbox-label">Show Port Section Title (Copper/Fiber)</span>
@@ -1273,7 +1270,7 @@ customElements.define("switch-port-card-pro-editor", SwitchPortCardProEditor);
   window.customCards.push({
     type: "switch-port-card-pro",
     name: "Switch Port Card Pro",
-    description: "Visualize switch ports", 
+    description: "Visualize switch ports",
     preview: true,
   });
 })();
