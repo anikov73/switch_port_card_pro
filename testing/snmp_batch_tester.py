@@ -1,8 +1,7 @@
 import re
-import sys
 import json
 import glob
-from typing import Dict, Any, List
+from typing import Dict, Any
 from pathlib import Path
 
 def _extract_manufacturer(sys_descr: str) -> str:
@@ -229,12 +228,14 @@ def test_discover_physical_ports(filename: str) -> Dict[int, Dict[str, Any]]:
         with open(filename, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if not line: continue
-                
+                if not line:
+                    continue
+
                 # Extract SysDescr for manufacturer detection
                 if "sysDescr" in line or ".1.3.6.1.2.1.1.1.0" in line:
                     parts = line.split(":", 1)
-                    if len(parts) > 1: sys_descr = parts[1].strip().strip('"')
+                    if len(parts) > 1:
+                        sys_descr = parts[1].strip().strip('"')
 
                 # Regex to handle different dump formats (Standard vs Cisco-style logs)
                 match_std = re.match(r'([A-Za-z0-9:\.\-]+)\s*=\s*(\w+):\s*(.*)', line)
@@ -244,7 +245,8 @@ def test_discover_physical_ports(filename: str) -> Dict[int, Dict[str, Any]]:
                     oid, val = match_std.group(1), match_std.group(3).strip()
                 elif match_cisco:
                     oid, val = match_cisco.group(1), match_cisco.group(3).strip()
-                else: continue
+                else:
+                    continue
                     
                 # Normalize OIDs
                 if oid.startswith("IF-MIB::ifDescr."):
@@ -262,9 +264,11 @@ def test_discover_physical_ports(filename: str) -> Dict[int, Dict[str, Any]]:
                 elif oid.startswith('1.3.6.1.2.1.2.2.1.3.'):
                     match_num = re.search(r'(\d+)', val)
                     type_data[oid] = match_num.group(1) if match_num else "0"
-    except Exception: return {}
+    except Exception:
+        return {}
 
-    if not descr_data: return {}
+    if not descr_data:
+        return {}
 
     return DoTheLoop(sys_descr, descr_data, type_data )
 
@@ -279,7 +283,7 @@ def batch_test_files(pattern: str = "snmp*.txt", detailed: bool = False) -> None
         return
     
     print("=" * 80)
-    print(f"SNMP PORT DISCOVERY - BATCH TEST RESULTS")
+    print("SNMP PORT DISCOVERY - BATCH TEST RESULTS")
     print("=" * 80 + "\n")
     
     results = []
@@ -301,7 +305,8 @@ def batch_test_files(pattern: str = "snmp*.txt", detailed: bool = False) -> None
     if detailed:
         print("\n" + "=" * 80 + "\nDETAILED PORT LISTINGS\n" + "=" * 80)
         for res in results:
-            if not res["mapping"]: continue
+            if not res["mapping"]:
+                continue
             print(f"\n📁 {res['file']}")
             for lp, info in sorted(res["mapping"].items()):
                 ptype = "SFP" if info["is_sfp"] else "Copper"
